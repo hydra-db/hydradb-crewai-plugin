@@ -1,6 +1,6 @@
 """Wire HydraDB as a CrewAI crew's external memory.
 
-Run: set HYDRADB_API_KEY and HYDRADB_TENANT_ID, then `python examples/basic.py`.
+Run: set HYDRADB_API_KEY and HYDRADB_DATABASE, then `python examples/basic.py`.
 """
 
 import os
@@ -12,7 +12,7 @@ from hydradb_crewai import HydraDBClient, HydraDBStorage
 
 client = HydraDBClient(
     api_key=os.environ["HYDRADB_API_KEY"],
-    tenant_id=os.environ["HYDRADB_TENANT_ID"],
+    tenant_id=os.environ["HYDRADB_DATABASE"],
 )
 
 researcher = Agent(
