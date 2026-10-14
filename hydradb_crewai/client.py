@@ -145,7 +145,7 @@ class HydraDBClient:
             "id": source_id or f"note-{uuid.uuid4().hex}",
             "title": title or "note",
             "content": {"text": text},
-            "metadata": metadata or {},
+            "additional_metadata": _sanitize_metadata(metadata),
             "infer": infer,
         }
         return self.add_knowledge([item])
@@ -176,6 +176,32 @@ class HydraDBClient:
         return self._unwrap(resp)
 
 
+# Metadata keys HydraDB reserves on a document; free-form fields using these
+# names are rejected, so route them to a prefixed name instead of failing.
+_RESERVED_META_KEYS = {"description", "source_id"}
+
+
+def _sanitize_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    """Coerce arbitrary caller metadata into what ``additional_metadata`` accepts.
+
+    HydraDB caps metadata nesting at depth 1 and reserves some key names, so a
+    CrewAI save carrying a ``description`` or nested ``messages`` is rejected and
+    nothing persists. This flattens nested values to JSON strings, drops empty
+    values, and renames reserved keys so every save goes through.
+    """
+    clean: dict[str, Any] = {}
+    for key, value in (metadata or {}).items():
+        if value is None:
+            continue
+        if isinstance(value, (dict, list, tuple)):
+            value = json.dumps(value, default=str)
+        elif not isinstance(value, (str, int, float, bool)):
+            value = str(value)
+        safe_key = f"crew_{key}" if key in _RESERVED_META_KEYS else key
+        clean[safe_key] = value
+    return clean
+
+
 def _to_chunk(raw: dict[str, Any]) -> HydraChunk:
     """Normalise a wire chunk into :class:`HydraChunk`.
 
@@ -197,20 +223,27 @@ def _to_chunk(raw: dict[str, Any]) -> HydraChunk:
 
 
 def _extract_text(value: Any) -> str:
-    """Unwrap a HydraDB content envelope to its prose, else return as-is."""
+    """Unwrap a HydraDB content envelope to its prose, else return as-is.
+
+    Recall may return the stored envelope JSON followed by trailing graph
+    enrichment (``"\\n\\nExtra context: ..."``). The envelope is decoded from the
+    front with ``raw_decode`` so the trailing text no longer defeats the unwrap;
+    the prose is returned with any enrichment appended and the JSON dropped.
+    """
     if isinstance(value, dict):
         return _prose_from_envelope(value) or json.dumps(value)
     if not isinstance(value, str):
         return str(value)
     stripped = value.strip()
-    if stripped.startswith("{") and stripped.endswith("}"):
+    if stripped.startswith("{"):
         try:
-            obj = json.loads(stripped)
+            obj, end = json.JSONDecoder().raw_decode(stripped)
         except ValueError:
             return value
         prose = _prose_from_envelope(obj)
         if prose is not None:
-            return prose
+            trailing = stripped[end:].strip()
+            return f"{prose}\n\n{trailing}" if trailing else prose
     return value
 
 
