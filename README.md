@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hydra-db/hydradb-crewai-plugin/main/assets/icon.png" width="96" alt="HydraDB" />
+</p>
+
 # crewai-hydradb
 
 HydraDB as external memory for [CrewAI](https://crewai.com) agents. Your crews
