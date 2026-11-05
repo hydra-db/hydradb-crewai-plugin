@@ -95,7 +95,7 @@ class HydraDBClient:
             "tenant_id": self.tenant_id,
             "sub_tenant_id": self.sub_tenant_id,
             "query": query,
-            "kind": kind,
+            "type": kind,
             "mode": mode,
             "max_results": max_results,
             "alpha": alpha,
@@ -215,7 +215,10 @@ def _to_chunk(raw: dict[str, Any]) -> HydraChunk:
         raw_text = raw.get("text") or raw.get("content") or ""
     return HydraChunk(
         text=_extract_text(raw_text),
-        score=raw.get("relevancy_score") or raw.get("score") or raw.get("relevance_score"),
+        score=next(
+            (raw[k] for k in ("relevancy_score", "score", "relevance_score") if raw.get(k) is not None),
+            None,
+        ),
         source_title=raw.get("source_title") or raw.get("title") or "",
         id=raw.get("chunk_uuid") or raw.get("id") or "",
         metadata=raw.get("metadata") or {},
