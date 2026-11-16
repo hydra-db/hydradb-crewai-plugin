@@ -1,5 +1,7 @@
 """Offline tests for the HydraDB CrewAI storage (no crewai/network needed)."""
 
+import json
+
 import responses
 
 from hydradb_crewai import HydraDBClient, HydraDBStorage
@@ -34,6 +36,10 @@ def test_search_maps_chunks_and_filters_by_score():
     assert results[0]["content"] == "keep me"
     assert results[0]["context"] == "keep me"
     assert results[0]["metadata"]["id"] == "a"
+
+    sent = json.loads(responses.calls[0].request.body)
+    assert "kind" not in sent
+    assert sent["type"] in ("memory", "knowledge")
 
 
 @responses.activate
