@@ -73,17 +73,25 @@ class HydraDBStorage(_BaseStorage):
         for chunk in chunks:
             if chunk.score is not None and chunk.score < score_threshold:
                 continue
+            metadata: dict[str, Any] = {
+                "source_title": chunk.source_title,
+                "id": chunk.id,
+                **chunk.metadata,
+            }
+            if chunk.context_id:
+                metadata = {
+                    "id": chunk.id,
+                    "context_id": chunk.context_id,
+                    "enrichment": chunk.enrichment,
+                    "received_at": chunk.received_at,
+                }
             results.append(
                 {
                     "content": chunk.text,
                     "context": chunk.text,
                     "memory": chunk.text,
                     "score": chunk.score,
-                    "metadata": {
-                        "source_title": chunk.source_title,
-                        "id": chunk.id,
-                        **chunk.metadata,
-                    },
+                    "metadata": metadata,
                 }
             )
         return results
