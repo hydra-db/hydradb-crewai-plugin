@@ -66,6 +66,29 @@ CrewAI's `ExternalMemory` delegates to a `Storage` implementation:
 
 This mirrors the pattern used by Mem0, Honcho, and Hindsight.
 
+## Unified rollout preparation
+
+Unified support is not enabled in production. Keep the default split layout
+until your database's production rollout is confirmed. Then construct the client
+with `HydraDBClient(..., layout="unified")`. Only `split` and `unified` are
+accepted; failures never trigger a layout retry.
+
+Unified saves send JSON `context[]`, with stable generated context IDs and
+`infer` mapped to `enrich`. CrewAI's sanitized free-form metadata maps to
+`custom_attributes`, while raw text-item `metadata` maps to `attributes`.
+Raw `additional_metadata` also maps to `custom_attributes`.
+The raw `add_knowledge` adapter supports text-only items with `id`, `title`,
+`content.text`, `infer`, `metadata` and `additional_metadata`; unsupported
+fields are rejected rather than dropped. Split writes remain unchanged.
+
+Storage search keeps its content/context/memory/score/metadata dictionaries and
+score filtering. Unified results retain separate chunk `id` and `context_id`,
+`enrichment` and `received_at`, without invented source metadata.
+`query()` still returns chunks; `query_result()` retains complete response
+`.data` and envelope `.meta`, including root `graph[]`,
+`forceful_relations[]`, `llm_prompt`, and `tabular_data`. This does not change
+the supported CrewAI version range.
+
 ## Test
 
 ```bash
